@@ -18,7 +18,7 @@ info() { printf "\33[2K\r$COLOR_INF[*]$COLOR_RES $1" ; }
 #	Validate URL
 # 	-> Get PROXY (from PROXY_FILE)
 #	-> POST to [link] using PROXY, get to download button
-#	-> Parse HTML, grab link
+#	-> Parse HTML, paste link on console and opens it on browser
 debrid() {
 	# (Lazily) Validate URL
 	if [[ "$1" != *"http"* ]]
@@ -48,6 +48,8 @@ debrid() {
 			err "Could not parse direct link"
 		else
 			info "Parsed direct link: $DIRECT\n"
+			if [ "$(uname)" == "Linux" ]; then
+				xdg-open $DIRECT
 			break
 		fi
 	done
