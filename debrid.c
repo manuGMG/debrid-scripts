@@ -1,9 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <curl/curl.h>
+#include <regex.h>
 
 #define PROXY_FILE "SOCKS5.txt"
 #define PROXY_WARN 43200 
@@ -17,6 +19,7 @@ CURLcode res;
 struct Doc {
 	char *content;
 	size_t size;
+
 };
 
 const int vlinks_size = 11;
@@ -85,6 +88,43 @@ void get_proxy() {
 	curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
 }
 
+int validate(char *url) {
+	int valid = 0;
+	char *regex_string;
+
+	//check through the list of recognized domains for a substring match in the url
+	for (int i = 0; i < vlinks_size; i++) {
+		if (strstr(url, valid_links[i]) != NULL) {
+			asprintf(&regex_string, "https://%s/\\?[a-zA-Z0-9]{20}$", valid_links[i]);
+			valid=1;
+			break;
+		}
+	}
+	
+	//return false if url domain domain is not in array of recognized domains
+	if (!valid) {
+		return 0;
+	}
+
+	regex_t compiledRegex;
+
+	//security check in case regex suddenly stops compiling one day
+	if(regcomp(&compiledRegex, regex_string, REG_EXTENDED)) {
+		printf("Could Not Compile Regular Expression\n");
+		return 1;
+	}
+
+	//return true if download url iis valid
+	if(regexec(&compiledRegex, url, 0, NULL, 0) == 0) {
+		return 1;
+	}
+
+	//return false if download url is invaild
+	return 0;
+}
+
+
+
 void debrid(char *url) {
 	int valid = 0;
 	int i = 0;
@@ -97,16 +137,9 @@ void debrid(char *url) {
 	document.size = 0;
 
 	// Validate URL
-	for (i = 0; i < vlinks_size; i++) {
-		if (strstr(url, valid_links[i]) != NULL) {
-			valid = 1;
-			break;
-		}
-	}	
-
-	if (!valid) {
-		printf("Invalid URL\n");
-		return;
+	if (!validate(url)){
+			printf("Invalid URL\n");
+			return;
 	}
 
 	// Loop attempts
